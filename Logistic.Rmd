@@ -1,0 +1,163 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+rm(list = ls()) #clear workspace
+```
+
+
+
+```{r}
+library(datasets)
+library(highcharter)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(viridis)
+library(plotly)
+library(lubridate)
+library(xts)
+library(maps)
+library(ggmap)
+library(gridExtra)
+library(gt)
+```
+```{r}
+Data <- carData::Arrests
+str(Data)
+```
+
+```{r}
+data(Arrests, package="carData")
+```
+
+```{r}
+table(Arrests$released)
+```
+
+```{r}
+levels(Arrests$released) #Prints the levels, and you can see that "Yes" comes after "No" in alphabetical order
+```
+
+```{r}
+contrasts(Arrests$released) #This function shows you the contrasts associated with a factor. You can see the 1 is associated with "Yes". This is what our model will be predicting, the probability of a "Yes".
+```
+```{r}
+#Reverse the order
+Arrests$harsher <- relevel(Arrests$released, "Yes")
+#Rename the levels so that it is clear we now mean yes to harsher treatment
+levels(Arrests$harsher) <- c("No","Yes")
+#Check that it matches in reverse the original variable
+table(Arrests$harsher)
+```
+```{r}
+#We will also reverse the order of the "colour"" variable so that the dummy uses Whites as the baseline
+Arrests$colour <- relevel(Arrests$colour, "White")
+```
+
+## Logistic Regression
+```{r}
+fitl_1 <- glm(harsher ~ checks + colour + sex + employed, data=Arrests, family = "binomial")
+summary(fitl_1)
+```
+
+```{r}
+fitl_1 <- glm(harsher ~ checks + colour + sex + employed, data=Arrests, family = "binomial")
+summary(fitl_1)
+```
+```{r}
+confint(fitl_1)
+```
+```{r}
+exp(coef(fitl_1))
+```
+
+```{r}
+exp(cbind(OR = coef(fitl_1), confint(fitl_1))) #This will print both the OR and their 95% CI.
+```
+```{r}
+library(lessR, quietly= TRUE)
+```
+
+```{r}
+Logit(harsher ~ checks + colour + sex + employed, data=Arrests, brief=TRUE)
+```
+```{r}
+library(arm)
+```
+
+```{r}
+library(sjPlot)
+plot_model(fitl_1)
+```
+```{r}
+library(effects)
+plot(allEffects(fitl_1), ask=FALSE)
+```
+
+```{r}
+fitl_1_prob <- predict(fitl_1, type = "response") #If you want to add this to your dataframe you could designate your object as Arrests$fitl_1_prob
+fitl_1_prob[1:10]
+```
+```{r}
+names(fitl_1)
+```
+```{r}
+with(fitl_1, null.deviance - deviance)
+```
+
+```{r}
+with(fitl_1, df.null - df.residual)
+```
+
+```{r}
+#When doing it yourself, this is all you really need (we present the code in separate fashion above to that you understand better what the one here does)
+with(fitl_1, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE))
+```
+```{r}
+#Likelihood ratio R2
+with(fitl_1, (null.deviance - deviance)/null.deviance)
+```
+
+```{r}
+#First we define the classes according to the cut-off
+fitl_1_pred_class <- fitl_1_prob > .5
+#This creates a logical vector that returns TRUE when the condition is met (the subject is predicted to be released) and FALSE when the condition is not met (harsher treatment was delivered)
+fitl_1_pred_class[1:10]
+```
+```{r}
+#Let's make this into a factor with the same levels than the original variable
+harsher_pred <- as.factor(fitl_1_pred_class)
+levels(harsher_pred) <- c("No","Yes")
+table(harsher_pred)
+```
+
+```{r}
+#Then we can produce the cross tab
+tab0 <- table(harsher_pred, Arrests$harsher)
+tab0
+```
+
+```{r}
+library(caret)
+```
+```{r}
+confusionMatrix(data=harsher_pred, reference=Arrests$harsher, positive="Yes") #The data argument specifies the vector with the predictions and the reference argument the vector with the observed outcome or event. The positive argument identifies the level of interest in the factor.
+```
+```{r}
+library(pROC)
+rocCURVE <- roc(response = Arrests$harsher, 
+                predictor = fitl_1_prob)
+plot(rocCURVE, legacy.axes = TRUE) #By default the x-axis goes backwards, we can use the specified option legacy.axes=TRUE, to get 1-spec on the x axis moving from 0 to 1.
+```
+```{r}
+alt_cutoff1 <- coords(rocCURVE, x = "best", best.method = "closest.topleft")
+#The x argument in this case is selecting the best cut off using the "closest topleft" method (which identifie the point closest to the top-left part of the plot with perfect sensitivity or specificity). Another option is to use the "youden" method in the best.method argument.
+alt_cutoff1
+```
+
+```{r}
+
+```
+

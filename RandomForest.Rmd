@@ -1,0 +1,82 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+#Random Forest
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+# Load data
+Data <- carData::Arrests
+str(Data)
+```
+
+```{r}
+data(Arrests, package="carData")
+```
+
+```{r}
+table(Arrests$released)
+```
+```{r}
+levels(Arrests$released)
+```
+```{r}
+contrasts(Arrests$released)
+```
+```{r}
+#Reverse the order
+Arrests$harsher <- relevel(Arrests$released, "Yes")
+#Rename the levels so that it is clear we now mean yes to harsher treatment
+levels(Arrests$harsher) <- c("No","Yes")
+#Check that it matches in reverse the original variable
+table(Arrests$harsher)
+```
+```{r}
+Arrests$colour <- relevel(Arrests$colour, "White")
+```
+
+```{r}
+Data$released <- as.factor(Data$released)
+```
+
+
+```{r}
+set.seed(123)
+train_indices <- createDataPartition(Data$released, p = 0.7, list = FALSE)
+train_data <- Data[train_indices, ]
+test_data <- Data[-train_indices, ]
+```
+
+```{r}
+library(randomForest)
+model <- randomForest(released ~ ., data = Data)
+```
+
+```{r}
+# Predict 'released' variable
+prediction <- predict(model, test_data)
+```
+
+```{r}
+# Create confusion matrix
+confusion <- confusionMatrix(prediction, test_data$released)
+
+```
+
+```{r}
+print(confusion)
+```
+```{r}
+# Plot counts of 'No' and 'Yes' for 'released' variable in a new window
+par(mfrow=c(1,2))
+barplot(table(Data$released), main = "Counts of 'No' and 'Yes' in Data",
+        col = c("#F8766D", "#00BA38"), legend = TRUE)
+barplot(table(prediction), main = "Counts of 'No' and 'Yes' in Predictions",
+        col = c("#F8766D", "#00BA38"), legend = TRUE)
+```
+

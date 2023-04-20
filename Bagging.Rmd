@@ -1,0 +1,64 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+## Bagging  
+
+```{r}
+library(carData)
+```
+
+```{r}
+Data <- carData::Arrests
+str(Data)
+```
+```{r}
+# Split the data into training and testing sets
+set.seed(123) # for reproducibility
+train_indices <- sample(1:nrow(Arrests), nrow(Arrests) * 0.7) # 70% for training
+train_data <- Arrests[train_indices, ]
+test_data <- Arrests[-train_indices, ]
+```
+```{r}
+# Load the required library for bagging
+library(ipred)
+```
+
+```{r}
+# Perform bagging
+bagged_model <- bagging(released ~ age + sex + employed + citizen + checks + colour + year, data = train_data, coob = TRUE)
+```
+
+```{r}
+# Predict the response variable "released" on test data
+predictions <- predict(bagged_model, newdata = test_data)
+```
+
+```{r}
+# Print the confusion matrix
+confusion_matrix <- table(predictions, test_data$released)
+print(confusion_matrix)
+```
+```{r}
+# Calculate accuracy
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+cat("Accuracy:", round(accuracy, 4), "\n")
+```
+```{r}
+# Calculate kappa
+observed_agreement <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+expected_agreement <- sum(rowSums(confusion_matrix) * colSums(confusion_matrix)) / sum(confusion_matrix)^2
+kappa <- (observed_agreement - expected_agreement) / (1 - expected_agreement)
+cat("Kappa:", round(kappa, 4), "\n")
+```
+
+```{r}
+# Calculate sensitivity
+sensitivity <- confusion_matrix[2, 2] / sum(confusion_matrix[2, ])
+cat("Sensitivity (True Positive Rate):", round(sensitivity, 4), "\n")
+
+# Calculate specificity
+specificity <- confusion_matrix[1, 1] / sum(confusion_matrix[1, ])
+cat("Specificity (True Negative Rate):", round(specificity, 4), "\n")
+```
+
